@@ -445,7 +445,18 @@ class TrustStore:
         #with open('cert_tset.plist', "rb") as inputFile:
         #    self._tset = inputFile.read()
     
+    
+    def is_valid(self):
+        conn = sqlite3.connect(self._path)
+        c = conn.cursor()
+        row = c.execute('SELECT count(*) FROM sqlite_master WHERE type=\'table\' AND name=\'tsettings\'').fetchone()
+        conn.close()
+        return (row[0] > 0) 
+    
     def _add_record(self, sha1, subj, tset, data):
+        if not self.is_valid():
+            print "  Invalid TrustStore.sqlite3"
+            return
         conn = sqlite3.connect(self._path)
         c = conn.cursor()
         c.execute('SELECT COUNT(*) FROM tsettings WHERE subj=?', [sqlite3.Binary(subj)])
@@ -473,6 +484,9 @@ class TrustStore:
             self._tset, certificate.get_data())
     
     def export_certificates(self, base_filename):
+        if not self.is_valid():
+            print "  Invalid TrustStore.sqlite3"
+            return
         conn = sqlite3.connect(self._path)
         c = conn.cursor()
         index = 1
@@ -487,6 +501,9 @@ class TrustStore:
         conn.close()
     
     def export_certificates_data(self, base_filename):
+        if not self.is_valid():
+            print "  Invalid TrustStore.sqlite3"
+            return
         conn = sqlite3.connect(self._path)
         c = conn.cursor()
         index = 1
@@ -509,10 +526,13 @@ class TrustStore:
         self._add_record(certificateSha1, certificateSubject, certificateTSet, certificateData)
 
     def list_certificates(self):
-        conn = sqlite3.connect(self._path)
-        c = conn.cursor()
         print
         print self._title
+        if not self.is_valid():
+            print "  Invalid TrustStore.sqlite3"
+            return
+        conn = sqlite3.connect(self._path)
+        c = conn.cursor()
         for row in c.execute('SELECT data FROM tsettings'):
             cert = Certificate()
             cert.load_data(row[0])
@@ -520,6 +540,9 @@ class TrustStore:
         conn.close()
 
     def delete_certificates(self):
+        if not self.is_valid():
+            print "  Invalid TrustStore.sqlite3"
+            return
         conn = sqlite3.connect(self._path)
         c = conn.cursor()
         print
