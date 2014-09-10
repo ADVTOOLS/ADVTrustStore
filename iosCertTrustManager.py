@@ -580,9 +580,10 @@ def ios_simulators():
     """An iterator over the available IOS simulator versions
     """
     for sdk_dir in os.listdir(IOSSimulator.simulatorDir):
-        simulator = IOSSimulator(sdk_dir)
-        if simulator.is_valid():
-            yield simulator
+        if not sdk_dir.startswith('.'):
+            simulator = IOSSimulator(sdk_dir)
+            if simulator.is_valid():
+                yield simulator
         
 #----------------------------------------------------------------------
 # Device backup support
