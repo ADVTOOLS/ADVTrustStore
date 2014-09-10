@@ -569,8 +569,9 @@ class IOSSimulator:
     trustStorePath = "/data/Library/Keychains/TrustStore.sqlite3"
     
     def __init__(self, subdir):
-        self.version = subdir
-        self.title = "iPhone/iPad simulator v" + self.version
+        self.plist = plistlib.readPlist(self.simulatorDir + subdir + "/device.plist")
+        self.version = self.plist["runtime"].split(".")[-1].replace("iOS-", "").replace("-", ".")
+        self.title = self.plist["name"] + " " + self.version
         self.truststore_file = self.simulatorDir + subdir + self.trustStorePath
         
     def is_valid(self):
