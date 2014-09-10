@@ -565,8 +565,8 @@ class TrustStore:
 class IOSSimulator:
     """Represents an instance of an IOS simulator folder
     """
-    simulatorDir = os.getenv('HOME') + "/Library/Application Support/iPhone Simulator/"
-    trustStorePath = "/Library/Keychains/TrustStore.sqlite3"
+    simulatorDir = os.getenv('HOME') + "/Library/Developer/CoreSimulator/Devices/"
+    trustStorePath = "/data/Library/Keychains/TrustStore.sqlite3"
     
     def __init__(self, subdir):
         self.version = subdir
