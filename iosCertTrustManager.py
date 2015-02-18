@@ -565,12 +565,13 @@ class TrustStore:
 class IOSSimulator:
     """Represents an instance of an IOS simulator folder
     """
-    simulatorDir = os.getenv('HOME') + "/Library/Application Support/iPhone Simulator/"
-    trustStorePath = "/Library/Keychains/TrustStore.sqlite3"
+    simulatorDir = os.getenv('HOME') + "/Library/Developer/CoreSimulator/Devices/"
+    trustStorePath = "/data/Library/Keychains/TrustStore.sqlite3"
     
     def __init__(self, subdir):
-        self.version = subdir
-        self.title = "iPhone/iPad simulator v" + self.version
+        self.plist = plistlib.readPlist(self.simulatorDir + subdir + "/device.plist")
+        self.version = self.plist["runtime"].split(".")[-1].replace("iOS-", "").replace("-", ".")
+        self.title = self.plist["name"] + " " + self.version
         self.truststore_file = self.simulatorDir + subdir + self.trustStorePath
         
     def is_valid(self):
@@ -580,9 +581,10 @@ def ios_simulators():
     """An iterator over the available IOS simulator versions
     """
     for sdk_dir in os.listdir(IOSSimulator.simulatorDir):
-        simulator = IOSSimulator(sdk_dir)
-        if simulator.is_valid():
-            yield simulator
+        if not sdk_dir.startswith('.'):
+            simulator = IOSSimulator(sdk_dir)
+            if simulator.is_valid():
+                yield simulator
         
 #----------------------------------------------------------------------
 # Device backup support
