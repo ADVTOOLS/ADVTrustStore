@@ -56,6 +56,11 @@ def query_yes_no(question, default="yes"):
     while 1:
         sys.stdout.write(question + prompt)
         choice = raw_input().lower()
+
+        """choice = "y"
+        uncomment this line and remove choice = raw_input().lower() for easier use in automated scripts
+        """
+
         if default is not None and choice == '':
             return default
         elif choice in valid.keys():
@@ -569,10 +574,16 @@ class IOSSimulator:
     trustStorePath = "/data/Library/Keychains/TrustStore.sqlite3"
     
     def __init__(self, subdir):
-        self.plist = plistlib.readPlist(self.simulatorDir + subdir + "/device.plist")
-        self.version = self.plist["runtime"].split(".")[-1].replace("iOS-", "").replace("-", ".")
-        self.title = self.plist["name"] + " " + self.version
-        self.truststore_file = self.simulatorDir + subdir + self.trustStorePath
+        self.truststore_file = ""
+        deviceList = "/device.plist"
+        deviceListLocation = self.simulatorDir + subdir + deviceList
+
+        if "device_set.plist" not in deviceListLocation:
+            self.plist = plistlib.readPlist(deviceListLocation)
+
+            self.version = self.plist['runtime'].split(".")[-1].replace("iOS-", "").replace("-", ".")
+            self.title = self.plist["name"] + " " + self.version
+            self.truststore_file = self.simulatorDir + subdir + self.trustStorePath
         
     def is_valid(self):
         return os.path.isfile(self.truststore_file)
