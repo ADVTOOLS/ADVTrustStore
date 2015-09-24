@@ -567,22 +567,34 @@ class IOSSimulator:
     """
     simulatorDir = os.getenv('HOME') + "/Library/Developer/CoreSimulator/Devices/"
     trustStorePath = "/data/Library/Keychains/TrustStore.sqlite3"
+    runtimeName = "com.apple.CoreSimulator.SimRuntime.iOS-"
     
-    def __init__(self, subdir):
-        self.plist = plistlib.readPlist(self.simulatorDir + subdir + "/device.plist")
-        self.version = self.plist["runtime"].split(".")[-1].replace("iOS-", "").replace("-", ".")
-        self.title = self.plist["name"] + " " + self.version
-        self.truststore_file = self.simulatorDir + subdir + self.trustStorePath
+    def __init__(self, simulatordir):
+        self._is_valid = False
+        infofile = simulatordir + "/device.plist"
+        if os.path.isfile(infofile):
+            info = plistlib.readPlist(infofile)
+            runtime = info["runtime"]
+            if runtime.startswith(self.runtimeName):
+                self.version = runtime[len(self.runtimeName):].replace("-", ".")
+            else:
+                self.version = runtime
+            self.title = info["name"] + " v" + self.version
+            self.truststore_file = simulatordir + self.trustStorePath
+            if os.path.isfile(self.truststore_file):
+                self._is_valid = True
+            
         
     def is_valid(self):
-        return os.path.isfile(self.truststore_file)
+        return self._is_valid
 
 def ios_simulators():
     """An iterator over the available IOS simulator versions
     """
-    for sdk_dir in os.listdir(IOSSimulator.simulatorDir):
-        if not sdk_dir.startswith('.'):
-            simulator = IOSSimulator(sdk_dir)
+    for subdir in os.listdir(IOSSimulator.simulatorDir):
+        simulatordir = IOSSimulator.simulatorDir + subdir
+        if os.path.isdir(simulatordir):
+            simulator = IOSSimulator(simulatordir)
             if simulator.is_valid():
                 yield simulator
         
