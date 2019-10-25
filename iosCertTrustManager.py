@@ -651,7 +651,7 @@ class Program:
                 tstore.add_certificate(cert)
             return
         for simulator in ios_simulators():
-            if query_yes_no("Import certificate to " + simulator.title, "no") == "yes":
+            if query_yes_no("Import certificate to " + simulator.title.encode('utf-8'), "no") == "yes":
                 print "Importing to " + simulator.truststore_file
                 tstore = TrustStore(simulator.truststore_file)
                 tstore.add_certificate(cert)
