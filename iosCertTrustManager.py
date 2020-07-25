@@ -1,8 +1,8 @@
 #! /usr/bin/env python
 
-# Script to manage additional trusted root certificate in the IOS simulator
+# Script to manage additional trusted root certificate in the simulator
 #
-# Allows to add/list/delete/export trusted root certificates to the IOS simulator
+# Allows to add/list/delete/export trusted root certificates to the simulator
 # TrustStore.sqlite3 file.
 #
 # Additionally, root certificates added to a device can be listed and exported from 
@@ -382,7 +382,7 @@ class Certificate:
         return None
 
     def get_subject_ASN1(self):
-        """Get the certificate subject in ASN1 encoded format as expected for the IOS trusted certificate keychain store
+        """Get the certificate subject in ASN1 encoded format as expected for the trusted certificate keychain store
         """
         if self._subject == None and self._data != None:
             self._subject = bytearray()
@@ -425,11 +425,11 @@ class Certificate:
                 input.leave()
 
 #----------------------------------------------------------------------
-# IOS TrustStore.sqlite3 handling
+# TrustStore.sqlite3 handling
 #----------------------------------------------------------------------
 
 class TrustStore:
-    """Represents the IOS trusted certificate store
+    """Represents the trusted certificate store
     """
     def __init__(self, path, title=None):
         self._path = path
@@ -559,15 +559,15 @@ class TrustStore:
         conn.close()
 
 #----------------------------------------------------------------------
-# IOS Simulator access
+# Simulator access
 #----------------------------------------------------------------------
 
-class IOSSimulator:
-    """Represents an instance of an IOS simulator folder
+class Simulator:
+    """Represents an instance of an simulator folder
     """
     simulatorDir = os.getenv('HOME') + "/Library/Developer/CoreSimulator/Devices/"
     trustStorePath = "/data/Library/Keychains/TrustStore.sqlite3"
-    runtimeName = "com.apple.CoreSimulator.SimRuntime.iOS-"
+    runtimeName = "com.apple.CoreSimulator.SimRuntime."
     
     def __init__(self, simulatordir):
         self._is_valid = False
@@ -579,7 +579,7 @@ class IOSSimulator:
                 self.version = runtime[len(self.runtimeName):].replace("-", ".")
             else:
                 self.version = runtime
-            self.title = info["name"] + " v" + self.version
+            self.title = info["name"] + " " + self.version
             self.truststore_file = simulatordir + self.trustStorePath
             if os.path.isfile(self.truststore_file):
                 self._is_valid = True
@@ -588,13 +588,13 @@ class IOSSimulator:
     def is_valid(self):
         return self._is_valid
 
-def ios_simulators():
-    """An iterator over the available IOS simulator versions
+def simulators():
+    """An iterator over the available simulator versions
     """
-    for subdir in os.listdir(IOSSimulator.simulatorDir):
-        simulatordir = IOSSimulator.simulatorDir + subdir
+    for subdir in os.listdir(Simulator.simulatorDir):
+        simulatordir = Simulator.simulatorDir + subdir
         if os.path.isdir(simulatordir):
-            simulator = IOSSimulator(simulatordir)
+            simulator = Simulator(simulatordir)
             if simulator.is_valid():
                 yield simulator
         
@@ -603,7 +603,7 @@ def ios_simulators():
 #----------------------------------------------------------------------
 
 class DeviceBackup:
-    """Represents an instance of an IOS simulator folder
+    """Represents an instance of an simulator folder
     """
     trustStore_filename = "61c8b15a0110ab17d1b7467c3a042eb1458426c6"
     
@@ -650,7 +650,7 @@ class Program:
                 tstore = TrustStore(truststore_filepath)
                 tstore.add_certificate(cert)
             return
-        for simulator in ios_simulators():
+        for simulator in simulators():
             if query_yes_no("Import certificate to " + simulator.title.encode('utf-8'), "no") == "yes":
                 print "Importing to " + simulator.truststore_file
                 tstore = TrustStore(simulator.truststore_file)
@@ -662,7 +662,7 @@ class Program:
                 tstore = TrustStore(truststore_filepath)
                 tstore.import_certificate_data(dump_base_filename)
             return
-        for simulator in ios_simulators():
+        for simulator in simulators():
             if query_yes_no("Import to " + simulator.title, "no") == "yes":
                 print "Importing to " + simulator.truststore_file
                 tstore = TrustStore(simulator.truststore_file)
@@ -673,7 +673,7 @@ class Program:
             tstore = TrustStore(truststore_filepath)
             tstore.list_certificates()
             return
-        for simulator in ios_simulators():
+        for simulator in simulators():
             tstore = TrustStore(simulator.truststore_file, simulator.title)
             tstore.list_certificates()
     
@@ -685,7 +685,7 @@ class Program:
             else:
                 tstore.export_certificates(certificate_base_filename)
             return
-        for simulator in ios_simulators():
+        for simulator in simulators():
             tstore = TrustStore(simulator.truststore_file, simulator.title)
             if mode_dump:
                 tstore.export_certificates_data(certificate_base_filename + "_" + simulator.version)
@@ -697,7 +697,7 @@ class Program:
             tstore = TrustStore(truststore_filepath)
             tstore.delete_certificates()
             return
-        for simulator in ios_simulators():
+        for simulator in simulators():
             tstore = TrustStore(simulator.truststore_file, simulator.title)
             tstore.delete_certificates()
     
@@ -717,13 +717,13 @@ class Program:
     def run(self):
         parser = argparse.ArgumentParser()
         group = parser.add_mutually_exclusive_group(required=True)
-        group.add_argument("-l", "--list", help="list custom trusted certificates in IOS simulator", action="store_true")
-        group.add_argument("-d", "--delete", help="delete custom trusted certificates in IOS simulator", action="store_true")
-        group.add_argument("-a", "--add", help="specifies a certificate file in PEM format to import and add to the IOS simulator trusted list", dest='certificate_file')
-        group.add_argument("-e", "--export", help="export custom trusted certificates from IOS simulator in PEM format. ", dest='export_base_filename')
-        group.add_argument("--dump", help="dump custom trusted certificates records from IOS simulator. ", dest='dump_base_filename')
-        group.add_argument("--addfromdump", help="add custom trusted certificates records to IOS simulator from dump file created with --dump. ", dest='adddump_base_filename')
-        parser.add_argument("-t", "--truststore", help="specify the path of the IOS TrustStore.sqlite3 file to edit. The default is to select and prompt for each available version")
+        group.add_argument("-l", "--list", help="list custom trusted certificates in simulator", action="store_true")
+        group.add_argument("-d", "--delete", help="delete custom trusted certificates in simulator", action="store_true")
+        group.add_argument("-a", "--add", help="specifies a certificate file in PEM format to import and add to the simulator trusted list", dest='certificate_file')
+        group.add_argument("-e", "--export", help="export custom trusted certificates from simulator in PEM format. ", dest='export_base_filename')
+        group.add_argument("--dump", help="dump custom trusted certificates records from simulator. ", dest='dump_base_filename')
+        group.add_argument("--addfromdump", help="add custom trusted certificates records to simulator from dump file created with --dump. ", dest='adddump_base_filename')
+        parser.add_argument("-t", "--truststore", help="specify the path of the TrustStore.sqlite3 file to edit. The default is to select and prompt for each available version")
         parser.add_argument("-b", "--devicebackup", help="(experimental) select a device backup as the TrustStore.sqlite3 source for list or export", action="store_true")
         args = parser.parse_args()
         if args.truststore and not os.path.isfile(args.truststore):
