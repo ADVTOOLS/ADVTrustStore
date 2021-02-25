@@ -495,7 +495,7 @@ class TrustStore:
         for row in c.execute('SELECT subj, data FROM tsettings'):
             cert = Certificate()
             cert.load_data(row[1])
-            if query_yes_no("  " + cert.get_subject() + "    Export certificate", "no") == "yes":
+            if self.always_yes or query_yes_no("  " + cert.get_subject() + "    Export certificate", "no") == "yes":
                 cert.save_PEMfile(base_filename + "_" + str(index) + ".crt")
                 index = index + 1
         conn.close()
@@ -510,7 +510,7 @@ class TrustStore:
         for row in c.execute('SELECT sha1, subj, tset, data FROM tsettings'):
             cert = Certificate()
             cert.load_data(row[3])
-            if query_yes_no("  " + cert.get_subject() + "    Export certificate", "no") == "yes":
+            if self.always_yes or query_yes_no("  " + cert.get_subject() + "    Export certificate", "no") == "yes":
                 base_filename2 = base_filename + "_" + str(index)
                 self._saveBlob(base_filename2, 'sha1', row[0])
                 self._saveBlob(base_filename2, 'subj', row[1])
@@ -551,7 +551,7 @@ class TrustStore:
         for row in c.execute('SELECT subj, data FROM tsettings'):
             cert = Certificate()
             cert.load_data(row[1])
-            if query_yes_no("  " + cert.get_subject() + "    Delete certificate", "no") == "yes":
+            if self.always_yes or query_yes_no("  " + cert.get_subject() + "    Delete certificate", "no") == "yes":
                 todelete.append(row[0])
         for item in todelete:
             c.execute('DELETE FROM tsettings WHERE subj=?', [item])
@@ -646,24 +646,24 @@ class Program:
         cert.load_PEMfile(certificate_filepath)
         print cert.get_subject()
         if truststore_filepath:
-            if query_yes_no("Import certificate to " + truststore_filepath, "no") == "yes":
+            if self.always_yes or query_yes_no("Import certificate to " + truststore_filepath, "no") == "yes":
                 tstore = TrustStore(truststore_filepath)
                 tstore.add_certificate(cert)
             return
         for simulator in simulators():
-            if query_yes_no("Import certificate to " + simulator.title.encode('utf-8'), "no") == "yes":
+            if self.always_yes or query_yes_no("Import certificate to " + simulator.title.encode('utf-8'), "no") == "yes":
                 print "Importing to " + simulator.truststore_file
                 tstore = TrustStore(simulator.truststore_file)
                 tstore.add_certificate(cert)
     
     def addfromdump(self, dump_base_filename, truststore_filepath=None):
         if truststore_filepath:
-            if query_yes_no("Import to " + truststore_filepath, "no") == "yes":
+            if self.always_yes or query_yes_no("Import to " + truststore_filepath, "no") == "yes":
                 tstore = TrustStore(truststore_filepath)
                 tstore.import_certificate_data(dump_base_filename)
             return
         for simulator in simulators():
-            if query_yes_no("Import to " + simulator.title, "no") == "yes":
+            if self.always_yes or query_yes_no("Import to " + simulator.title, "no") == "yes":
                 print "Importing to " + simulator.truststore_file
                 tstore = TrustStore(simulator.truststore_file)
                 tstore.import_certificate_data(dump_base_filename)
@@ -725,7 +725,12 @@ class Program:
         group.add_argument("--addfromdump", help="add custom trusted certificates records to simulator from dump file created with --dump. ", dest='adddump_base_filename')
         parser.add_argument("-t", "--truststore", help="specify the path of the TrustStore.sqlite3 file to edit. The default is to select and prompt for each available version")
         parser.add_argument("-b", "--devicebackup", help="(experimental) select a device backup as the TrustStore.sqlite3 source for list or export", action="store_true")
+        parser.add_argument("-y", "--yes", help="always answer yes to prompts", action="store_true")
         args = parser.parse_args()
+        if args.yes:
+            self.always_yes = True
+        else:
+            self.always_yes = False
         if args.truststore and not os.path.isfile(args.truststore):
             print "invalid file: ", args.truststore
             exit(1)
