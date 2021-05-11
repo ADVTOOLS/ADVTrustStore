@@ -332,7 +332,6 @@ class Certificate:
         self._init_data()
 
     def _init_data(self):
-        self._fingerprint = None
         self._data = None
         self._subject = None
         self._filepath = None
@@ -363,12 +362,12 @@ class Certificate:
     def get_data(self):
         return self._data
 
-    def get_fingerprint(self):
-        if self._fingerprint == None and self._data != None:
-            sha1 = hashlib.sha1()
-            sha1.update(self._data)
-            self._fingerprint = sha1.digest()
-        return self._fingerprint 
+    def get_fingerprint(self, hash):
+        if self._data is None:
+            return
+        sha = hashlib.sha1() if hash == 'sha1' else hashlib.sha256()
+        sha.update(self._data)
+        return sha.digest()
 
     def get_subject(self):
         """Get the certificate subject in human readable one line format
@@ -433,9 +432,10 @@ class TrustStore:
     """
     def __init__(self, path, title=None):
         self._path = path
-        if title: 
-            self._title = title 
-        else: 
+        self._hash = None
+        if title:
+            self._title = title
+        else:
             self._title = path
         self._tset = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"\
             "<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">\n"\
@@ -444,16 +444,21 @@ class TrustStore:
             "</plist>\n"
         #with open('cert_tset.plist', "rb") as inputFile:
         #    self._tset = inputFile.read()
-    
-    
+
     def is_valid(self):
         conn = sqlite3.connect(self._path)
         c = conn.cursor()
         row = c.execute('SELECT count(*) FROM sqlite_master WHERE type=\'table\' AND name=\'tsettings\'').fetchone()
+        if row[0] == 0:
+            conn.close()
+            return False
+        c = conn.cursor()
+        row = c.execute('SELECT sql FROM sqlite_master WHERE name=\'tsettings\'').fetchone()
+        self._hash = 'sha256' if 'sha256' in row[0] else 'sha1'
         conn.close()
-        return (row[0] > 0) 
-    
-    def _add_record(self, sha1, subj, tset, data):
+        return True
+
+    def _add_record(self, sha, subj, tset, data):
         if not self.is_valid():
             print "  Invalid TrustStore.sqlite3"
             return
@@ -462,10 +467,10 @@ class TrustStore:
         c.execute('SELECT COUNT(*) FROM tsettings WHERE subj=?', [sqlite3.Binary(subj)])
         row = c.fetchone()
         if row[0] == 0:
-            c.execute('INSERT INTO tsettings (sha1, subj, tset, data) VALUES (?, ?, ?, ?)', [sqlite3.Binary(sha1), sqlite3.Binary(subj), sqlite3.Binary(tset), sqlite3.Binary(data)])
+            c.execute('INSERT INTO tsettings (' + self._hash + ', subj, tset, data) VALUES (?, ?, ?, ?)', [sqlite3.Binary(sha), sqlite3.Binary(subj), sqlite3.Binary(tset), sqlite3.Binary(data)])
             print '  Certificate added'
         else:
-            c.execute('UPDATE tsettings SET sha1=?, tset=?, data=? WHERE subj=?', [sqlite3.Binary(sha1), sqlite3.Binary(tset), sqlite3.Binary(data), sqlite3.Binary(subj)])
+            c.execute('UPDATE tsettings SET ' + self._hash + '=?, tset=?, data=? WHERE subj=?', [sqlite3.Binary(sha), sqlite3.Binary(tset), sqlite3.Binary(data), sqlite3.Binary(subj)])
             print '  Existing certificate replaced'
         conn.commit()
         conn.close()
@@ -476,13 +481,16 @@ class TrustStore:
 
     def _saveBlob(self, baseName, name, data):
         with open(baseName + '_' + name + '.bin', 'wb') as outputFile:
-            outputFile.write (data)
+            outputFile.write(data)
 
-    
     def add_certificate(self, certificate):
-        self._add_record(certificate.get_fingerprint(), certificate.get_subject_ASN1(), 
+        # this also populates self._hash
+        if not self.is_valid():
+            print "  Invalid TrustStore.sqlite3"
+            return
+        self._add_record(certificate.get_fingerprint(self._hash), certificate.get_subject_ASN1(),
             self._tset, certificate.get_data())
-    
+
     def export_certificates(self, base_filename):
         if not self.is_valid():
             print "  Invalid TrustStore.sqlite3"
@@ -507,23 +515,29 @@ class TrustStore:
         conn = sqlite3.connect(self._path)
         c = conn.cursor()
         index = 1
-        for row in c.execute('SELECT sha1, subj, tset, data FROM tsettings'):
+        for row in c.execute('SELECT subj, tset, data FROM tsettings'):
             cert = Certificate()
-            cert.load_data(row[3])
+            cert.load_data(row[2])
             if query_yes_no("  " + cert.get_subject() + "    Export certificate", "no") == "yes":
                 base_filename2 = base_filename + "_" + str(index)
-                self._saveBlob(base_filename2, 'sha1', row[0])
-                self._saveBlob(base_filename2, 'subj', row[1])
-                self._saveBlob(base_filename2, 'tset', row[2])
-                self._saveBlob(base_filename2, 'data', row[3])
+                self._saveBlob(base_filename2, 'subj', row[0])
+                self._saveBlob(base_filename2, 'tset', row[1])
+                self._saveBlob(base_filename2, 'data', row[2])
         conn.close()
 
     def import_certificate_data(self, base_filename):
-        certificateSha1 = self._loadBlob(base_filename, 'sha1')
+        # this also populates self._hash
+        if not self.is_valid():
+            print "  Invalid TrustStore.sqlite3"
+            return
         certificateSubject = self._loadBlob(base_filename, 'subj')
         certificateTSet = self._loadBlob(base_filename, 'tset')
         certificateData = self._loadBlob(base_filename, 'data')
-        self._add_record(certificateSha1, certificateSubject, certificateTSet, certificateData)
+        cert = Certificate()
+        cert.load_data(certificateData)
+        certificateSha = cert.get_fingerprint(self._hash)
+
+        self._add_record(certificateSha, certificateSubject, certificateTSet, certificateData)
 
     def list_certificates(self):
         print
@@ -566,9 +580,12 @@ class IOSSimulator:
     """Represents an instance of an IOS simulator folder
     """
     simulatorDir = os.getenv('HOME') + "/Library/Developer/CoreSimulator/Devices/"
-    trustStorePath = "/data/Library/Keychains/TrustStore.sqlite3"
+    trustStorePaths = [
+        "/data/Library/Keychains/TrustStore.sqlite3",
+        "/data/private/var/protected/trustd/private/TrustStore.sqlite3",
+    ]
     runtimeName = "com.apple.CoreSimulator.SimRuntime.iOS-"
-    
+
     def __init__(self, simulatordir):
         self._is_valid = False
         infofile = simulatordir + "/device.plist"
@@ -580,11 +597,13 @@ class IOSSimulator:
             else:
                 self.version = runtime
             self.title = info["name"] + " v" + self.version
-            self.truststore_file = simulatordir + self.trustStorePath
-            if os.path.isfile(self.truststore_file):
-                self._is_valid = True
-            
-        
+            for path in self.trustStorePaths:
+                self.truststore_file = simulatordir + path
+                if os.path.isfile(self.truststore_file):
+                    self._is_valid = True
+                    return
+
+
     def is_valid(self):
         return self._is_valid
 
@@ -597,7 +616,7 @@ def ios_simulators():
             simulator = IOSSimulator(simulatordir)
             if simulator.is_valid():
                 yield simulator
-        
+
 #----------------------------------------------------------------------
 # Device backup support
 #----------------------------------------------------------------------
