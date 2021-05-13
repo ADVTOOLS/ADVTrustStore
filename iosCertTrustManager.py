@@ -430,9 +430,10 @@ class Certificate:
 class TrustStore:
     """Represents the trusted certificate store
     """
-    def __init__(self, path, title=None):
+    def __init__(self, path, title=None, always_yes=False):
         self._path = path
         self._hash = None
+        self.always_yes = always_yes
         if title:
             self._title = title
         else:
@@ -665,46 +666,46 @@ class Program:
         print cert.get_subject()
         if truststore_filepath:
             if self.always_yes or query_yes_no("Import certificate to " + truststore_filepath, "no") == "yes":
-                tstore = TrustStore(truststore_filepath)
+                tstore = TrustStore(truststore_filepath, always_yes=self.always_yes)
                 tstore.add_certificate(cert)
             return
         for simulator in simulators():
             if self.always_yes or query_yes_no("Import certificate to " + simulator.title.encode('utf-8'), "no") == "yes":
                 print "Importing to " + simulator.truststore_file
-                tstore = TrustStore(simulator.truststore_file)
+                tstore = TrustStore(simulator.truststore_file, always_yes=self.always_yes)
                 tstore.add_certificate(cert)
     
     def addfromdump(self, dump_base_filename, truststore_filepath=None):
         if truststore_filepath:
             if self.always_yes or query_yes_no("Import to " + truststore_filepath, "no") == "yes":
-                tstore = TrustStore(truststore_filepath)
+                tstore = TrustStore(truststore_filepath, always_yes=self.always_yes)
                 tstore.import_certificate_data(dump_base_filename)
             return
         for simulator in simulators():
             if self.always_yes or query_yes_no("Import to " + simulator.title, "no") == "yes":
                 print "Importing to " + simulator.truststore_file
-                tstore = TrustStore(simulator.truststore_file)
+                tstore = TrustStore(simulator.truststore_file, always_yes=self.always_yes)
                 tstore.import_certificate_data(dump_base_filename)
     
     def list_simulator_trustedcertificates(self, truststore_filepath=None):
         if truststore_filepath:
-            tstore = TrustStore(truststore_filepath)
+            tstore = TrustStore(truststore_filepath, always_yes=self.always_yes)
             tstore.list_certificates()
             return
         for simulator in simulators():
-            tstore = TrustStore(simulator.truststore_file, simulator.title)
+            tstore = TrustStore(simulator.truststore_file, simulator.title, always_yes=self.always_yes)
             tstore.list_certificates()
     
     def export_simulator_trustedcertificates(self, certificate_base_filename, mode_dump, truststore_filepath=None):
         if truststore_filepath:
-            tstore = TrustStore(truststore_filepath)
+            tstore = TrustStore(truststore_filepath, always_yes=self.always_yes)
             if mode_dump:
                 tstore.export_certificates_data(certificate_base_filename)
             else:
                 tstore.export_certificates(certificate_base_filename)
             return
         for simulator in simulators():
-            tstore = TrustStore(simulator.truststore_file, simulator.title)
+            tstore = TrustStore(simulator.truststore_file, simulator.title, always_yes=self.always_yes)
             if mode_dump:
                 tstore.export_certificates_data(certificate_base_filename + "_" + simulator.version)
             else:
@@ -712,21 +713,21 @@ class Program:
     
     def delete_simulator_trustedcertificates(self, truststore_filepath=None):
         if truststore_filepath:
-            tstore = TrustStore(truststore_filepath)
+            tstore = TrustStore(truststore_filepath, always_yes=self.always_yes)
             tstore.delete_certificates()
             return
         for simulator in simulators():
-            tstore = TrustStore(simulator.truststore_file, simulator.title)
+            tstore = TrustStore(simulator.truststore_file, simulator.title, always_yes=self.always_yes)
             tstore.delete_certificates()
     
     def list_device_trustedcertificates(self):
         for backup in device_backups():
-            tstore = TrustStore(backup.get_truststore_file(), backup.title)
+            tstore = TrustStore(backup.get_truststore_file(), backup.title, always_yes=self.always_yes)
             tstore.list_certificates()
     
     def export_device_trustedcertificates(self, certificate_base_filename, mode_dump):
         for backup in device_backups():
-            tstore = TrustStore(backup.get_truststore_file(), backup.title)
+            tstore = TrustStore(backup.get_truststore_file(), backup.title, always_yes=self.always_yes)
             if mode_dump:
                 tstore.export_certificates_data(certificate_base_filename + "_" + backup.device_name)
             else:
