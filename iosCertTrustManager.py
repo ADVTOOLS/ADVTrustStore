@@ -582,8 +582,8 @@ class Simulator:
     """
     simulatorDir = os.getenv('HOME') + "/Library/Developer/CoreSimulator/Devices/"
     trustStorePaths = [
-        "/data/Library/Keychains/TrustStore.sqlite3",
         "/data/private/var/protected/trustd/private/TrustStore.sqlite3",
+        "/data/Library/Keychains/TrustStore.sqlite3",
     ]
     runtimeName = "com.apple.CoreSimulator.SimRuntime."
     
