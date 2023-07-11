@@ -21,6 +21,7 @@
 # Python-ASN1 is copyright (c) 2007-2008 by Geert Jansen <geert@boskant.nl>. 
 # see https://github.com/geertj/python-asn1
 
+from __future__ import print_function
 import os
 import sys
 import argparse
