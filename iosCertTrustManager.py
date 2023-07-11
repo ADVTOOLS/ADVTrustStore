@@ -55,10 +55,10 @@ def query_yes_no(question, default="yes"):
 
     while 1:
         sys.stdout.write(question + prompt)
-        choice = raw_input().lower()
+        choice = input().lower()
         if default is not None and choice == '':
             return default
-        elif choice in valid.keys():
+        elif choice in list(valid.keys()):
             return valid[choice]
         else:
             sys.stdout.write("Please respond with 'yes' or 'no' "\
@@ -99,16 +99,16 @@ class Encoder(object):
     def enter(self, nr, cls):
         """Start a constructed data value."""
         if self.m_stack is None:
-            raise Error, 'Encoder not initialized. Call start() first.'
+            raise Error('Encoder not initialized. Call start() first.')
         self._emit_tag(nr, ASN1.TypeConstructed, cls)
         self.m_stack.append([])
 
     def leave(self):
         """Finish a constructed data value."""
         if self.m_stack is None:
-            raise Error, 'Encoder not initialized. Call start() first.'
+            raise Error('Encoder not initialized. Call start() first.')
         if len(self.m_stack) == 1:
-            raise Error, 'Tag stack is empty.'
+            raise Error('Tag stack is empty.')
         value = ''.join(self.m_stack[-1])
         del self.m_stack[-1]
         self._emit_length(len(value))
@@ -117,7 +117,7 @@ class Encoder(object):
     def write(self, value, nr, typ, cls):
         """Write a primitive data value."""
         if self.m_stack is None:
-            raise Error, 'Encoder not initialized. Call start() first.'
+            raise Error('Encoder not initialized. Call start() first.')
         self._emit_tag(nr, typ, cls)
         self._emit_length(len(value))
         self._emit(value)
@@ -125,9 +125,9 @@ class Encoder(object):
     def output(self):
         """Return the encoded output."""
         if self.m_stack is None:
-            raise Error, 'Encoder not initialized. Call start() first.'
+            raise Error('Encoder not initialized. Call start() first.')
         if len(self.m_stack) != 1:
-            raise Error, 'Stack is not empty.'
+            raise Error('Stack is not empty.')
         output = ''.join(self.m_stack[0])
         return output
 
@@ -154,7 +154,7 @@ class Encoder(object):
             values.append((nr & 0x7f) | 0x80)
             nr >>= 7
         values.reverse()
-        values = map(chr, values)
+        values = list(map(chr, values))
         for val in values:
             self._emit(val)
 
@@ -177,7 +177,7 @@ class Encoder(object):
             values.append(length & 0xff)
             length >>= 8
         values.reverse()
-        values = map(chr, values)
+        values = list(map(chr, values))
         # really for correctness as this should not happen anytime soon
         assert len(values) < 127
         head = chr(0x80 | len(values))
@@ -202,7 +202,7 @@ class Decoder(object):
     def start(self, data):
         """Start processing `data'."""
         if not isinstance(data, str):
-            raise Error, 'Expecting string instance.'
+            raise Error('Expecting string instance.')
         self.m_stack = [[0, data]]
         self.m_tag = None
 
@@ -210,7 +210,7 @@ class Decoder(object):
         """Return the value of the next tag without moving to the next
         TLV record."""
         if self.m_stack is None:
-            raise Error, 'No input selected. Call start() first.'
+            raise Error('No input selected. Call start() first.')
         if self._end_of_input():
             return None
         if self.m_tag is None:
@@ -220,7 +220,7 @@ class Decoder(object):
     def read(self):
         """Read a simple value and move to the next TLV record."""
         if self.m_stack is None:
-            raise Error, 'No input selected. Call start() first.'
+            raise Error('No input selected. Call start() first.')
         if self._end_of_input():
             return None
         tag = self.peek()
@@ -236,10 +236,10 @@ class Decoder(object):
     def enter(self):
         """Enter a constructed tag."""
         if self.m_stack is None:
-            raise Error, 'No input selected. Call start() first.'
+            raise Error('No input selected. Call start() first.')
         nr, typ, cls = self.peek()
         if typ != ASN1.TypeConstructed:
-            raise Error, 'Cannot enter a non-constructed tag.'
+            raise Error('Cannot enter a non-constructed tag.')
         length = self._read_length()
         bytes = self._read_bytes(length)
         self.m_stack.append([0, bytes])
@@ -248,9 +248,9 @@ class Decoder(object):
     def leave(self):
         """Leave the last entered constructed tag."""
         if self.m_stack is None:
-            raise Error, 'No input selected. Call start() first.'
+            raise Error('No input selected. Call start() first.')
         if len(self.m_stack) == 1:
-            raise Error, 'Tag stack is empty.'
+            raise Error('Tag stack is empty.')
         del self.m_stack[-1]
         self.m_tag = None
 
@@ -275,10 +275,10 @@ class Decoder(object):
         if byte & 0x80:
             count = byte & 0x7f
             if count == 0x7f:
-                raise Error, 'ASN1 syntax error'
+                raise Error('ASN1 syntax error')
             bytes = self._read_bytes(count)
             bytes = [ ord(b) for b in bytes ]
-            length = 0L
+            length = 0
             for byte in bytes:
                 length = (length << 8) | byte
             try:
@@ -301,7 +301,7 @@ class Decoder(object):
         try:
             byte = ord(input[index])
         except IndexError:
-            raise Error, 'Premature end of input.'
+            raise Error('Premature end of input.')
         self.m_stack[-1][0] += 1
         return byte
 
@@ -311,7 +311,7 @@ class Decoder(object):
         index, input = self.m_stack[-1]
         bytes = input[index:index+count]
         if len(bytes) != count:
-            raise Error, 'Premature end of input.'
+            raise Error('Premature end of input.')
         self.m_stack[-1][0] += count
         return bytes
 
@@ -461,7 +461,7 @@ class TrustStore:
 
     def _add_record(self, sha, subj, tset, data):
         if not self.is_valid():
-            print "  Invalid TrustStore.sqlite3"
+            print("  Invalid TrustStore.sqlite3")
             return
         conn = sqlite3.connect(self._path)
         c = conn.cursor()
@@ -469,10 +469,10 @@ class TrustStore:
         row = c.fetchone()
         if row[0] == 0:
             c.execute('INSERT INTO tsettings (' + self._hash + ', subj, tset, data) VALUES (?, ?, ?, ?)', [sqlite3.Binary(sha), sqlite3.Binary(subj), sqlite3.Binary(tset), sqlite3.Binary(data)])
-            print '  Certificate added'
+            print('  Certificate added')
         else:
             c.execute('UPDATE tsettings SET ' + self._hash + '=?, tset=?, data=? WHERE subj=?', [sqlite3.Binary(sha), sqlite3.Binary(tset), sqlite3.Binary(data), sqlite3.Binary(subj)])
-            print '  Existing certificate replaced'
+            print('  Existing certificate replaced')
         conn.commit()
         conn.close()
 
@@ -487,20 +487,20 @@ class TrustStore:
     def add_certificate(self, certificate):
         # this also populates self._hash
         if not self.is_valid():
-            print "  Invalid TrustStore.sqlite3"
+            print("  Invalid TrustStore.sqlite3")
             return
         self._add_record(certificate.get_fingerprint(self._hash), certificate.get_subject_ASN1(),
             self._tset, certificate.get_data())
 
     def export_certificates(self, base_filename):
         if not self.is_valid():
-            print "  Invalid TrustStore.sqlite3"
+            print("  Invalid TrustStore.sqlite3")
             return
         conn = sqlite3.connect(self._path)
         c = conn.cursor()
         index = 1
-        print
-        print self._title
+        print()
+        print(self._title)
         for row in c.execute('SELECT subj, data FROM tsettings'):
             cert = Certificate()
             cert.load_data(row[1])
@@ -511,7 +511,7 @@ class TrustStore:
     
     def export_certificates_data(self, base_filename):
         if not self.is_valid():
-            print "  Invalid TrustStore.sqlite3"
+            print("  Invalid TrustStore.sqlite3")
             return
         conn = sqlite3.connect(self._path)
         c = conn.cursor()
@@ -529,7 +529,7 @@ class TrustStore:
     def import_certificate_data(self, base_filename):
         # this also populates self._hash
         if not self.is_valid():
-            print "  Invalid TrustStore.sqlite3"
+            print("  Invalid TrustStore.sqlite3")
             return
         certificateSubject = self._loadBlob(base_filename, 'subj')
         certificateTSet = self._loadBlob(base_filename, 'tset')
@@ -541,27 +541,27 @@ class TrustStore:
         self._add_record(certificateSha, certificateSubject, certificateTSet, certificateData)
 
     def list_certificates(self):
-        print
-        print self._title
+        print()
+        print(self._title)
         if not self.is_valid():
-            print "  Invalid TrustStore.sqlite3"
+            print("  Invalid TrustStore.sqlite3")
             return
         conn = sqlite3.connect(self._path)
         c = conn.cursor()
         for row in c.execute('SELECT data FROM tsettings'):
             cert = Certificate()
             cert.load_data(row[0])
-            print "  ", cert.get_subject()
+            print("  ", cert.get_subject())
         conn.close()
 
     def delete_certificates(self):
         if not self.is_valid():
-            print "  Invalid TrustStore.sqlite3"
+            print("  Invalid TrustStore.sqlite3")
             return
         conn = sqlite3.connect(self._path)
         c = conn.cursor()
-        print
-        print self._title
+        print()
+        print(self._title)
         todelete = []
         for row in c.execute('SELECT subj, data FROM tsettings'):
             cert = Certificate()
@@ -663,7 +663,7 @@ class Program:
     def import_to_simulator(self, certificate_filepath, truststore_filepath=None):
         cert = Certificate()
         cert.load_PEMfile(certificate_filepath)
-        print cert.get_subject()
+        print(cert.get_subject())
         if truststore_filepath:
             if self.always_yes or query_yes_no("Import certificate to " + truststore_filepath, "no") == "yes":
                 tstore = TrustStore(truststore_filepath, always_yes=self.always_yes)
@@ -671,7 +671,7 @@ class Program:
             return
         for simulator in simulators():
             if self.always_yes or query_yes_no("Import certificate to " + simulator.title.encode('utf-8'), "no") == "yes":
-                print "Importing to " + simulator.truststore_file
+                print("Importing to " + simulator.truststore_file)
                 tstore = TrustStore(simulator.truststore_file, always_yes=self.always_yes)
                 tstore.add_certificate(cert)
     
@@ -683,7 +683,7 @@ class Program:
             return
         for simulator in simulators():
             if self.always_yes or query_yes_no("Import to " + simulator.title, "no") == "yes":
-                print "Importing to " + simulator.truststore_file
+                print("Importing to " + simulator.truststore_file)
                 tstore = TrustStore(simulator.truststore_file, always_yes=self.always_yes)
                 tstore.import_certificate_data(dump_base_filename)
     
@@ -751,7 +751,7 @@ class Program:
         else:
             self.always_yes = False
         if args.truststore and not os.path.isfile(args.truststore):
-            print "invalid file: ", args.truststore
+            print("invalid file: ", args.truststore)
             exit(1)
         if args.devicebackup:
             if args.list:
@@ -761,7 +761,7 @@ class Program:
             elif args.dump_base_filename:
                 self.export_device_trustedcertificates(args.dump_base_filename, True)
             else:
-                print "option not supported"
+                print("option not supported")
         elif args.list:
             self.list_simulator_trustedcertificates(args.truststore)
         elif args.delete:
@@ -774,7 +774,7 @@ class Program:
             self.export_simulator_trustedcertificates(args.dump_base_filename, True, args.truststore)
         elif args.adddump_base_filename:
             self.addfromdump(args.adddump_base_filename, args.truststore)
-        print
+        print()
 
 if __name__ == "__main__":
     program = Program()
