@@ -33,6 +33,11 @@ import string
 import binascii
 import plistlib
 
+
+if hasattr(__builtins__, 'raw_input'):
+    input = raw_input
+
+
 def query_yes_no(question, default="yes"):
     """Ask a yes/no question via raw_input() and return their answer.
     
