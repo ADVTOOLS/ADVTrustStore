@@ -30,7 +30,6 @@ import ssl
 import hashlib
 import subprocess
 import string
-import binascii
 import plistlib
 
 
