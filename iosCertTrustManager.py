@@ -38,6 +38,16 @@ if hasattr(__builtins__, 'raw_input'):
     input = raw_input
 
 
+if hasattr(plistlib, 'readPlist'):
+    readPlist = plistlib.readPlist
+else:
+    def readPlist(path_or_file):
+        if isinstance(path_or_file, str):
+            with open(path_or_file, 'rb') as f:
+                return plistlib.load(f)
+        return plistlib.load(path_or_file)
+
+
 def query_yes_no(question, default="yes"):
     """Ask a yes/no question via raw_input() and return their answer.
     
@@ -597,7 +607,7 @@ class Simulator:
         self._is_valid = False
         infofile = simulatordir + "/device.plist"
         if os.path.isfile(infofile):
-            info = plistlib.readPlist(infofile)
+            info = readPlist(infofile)
             runtime = info["runtime"]
             if runtime.startswith(self.runtimeName):
                 self.version = runtime[len(self.runtimeName):].replace("-", ".")
@@ -638,7 +648,7 @@ class DeviceBackup:
         info_plist = self._path + "/Info.plist"
         if os.path.isfile(info_plist):
             try:
-                info = plistlib.readPlist(info_plist)
+                info = readPlist(info_plist)
                 self.device_name = info["Device Name"]
                 self.title = "Backup of " + self.device_name + " - " + str(info["Last Backup Date"])
                 self._isvalid = True
