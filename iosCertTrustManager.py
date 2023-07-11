@@ -393,7 +393,7 @@ class Certificate:
             possl = subprocess.Popen(['openssl',  'x509', '-inform',  'DER',  '-noout',  '-subject', '-nameopt', 'oneline'], 
                 shell=False, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=None)
             subjectText, error_text = possl.communicate(self.get_data())
-            return subjectText
+            return subjectText.decode('utf-8')
         return None
 
     def get_subject_ASN1(self):
